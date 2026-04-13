@@ -4,7 +4,19 @@
 This lab demonstrates how to containerize a Java Spring Boot application using Docker. It covers cloning the source code, writing a Dockerfile, building a Docker image, running a container, and verifying the application is accessible via a web browser.
 
 ## Dockerfile
-The Dockerfile uses a Maven base image with Java 17, sets a working directory, copies the application source code into the container, builds the app using `mvn package`, and runs the generated JAR file. Port 8080 is exposed to allow external access.
+```dockerfile
+FROM maven:3.9.6-eclipse-temurin-17  
+
+WORKDIR /app                   
+
+COPY . . 
+
+RUN mvn package -DskipTests
+
+EXPOSE 8080
+                           
+CMD ["java", "-jar", "target/demo-0.0.1-SNAPSHOT.jar"]  
+```
 
 ## Tools Used
 - **Docker** – Used to build the image and run the container.
