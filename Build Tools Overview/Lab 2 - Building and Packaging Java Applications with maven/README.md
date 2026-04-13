@@ -11,8 +11,6 @@ This lab demonstrates how to build and package a Java application using Maven. I
 ## Outcome
 By the end of the lab, a fully packaged Java application (`hello-ivolve-1.0-SNAPSHOT.jar`) was built from source, tested, and confirmed to be running correctly.
 
-## Screenshots
-
 ### Commands History
 ![Commands History](Commands.png)
 
