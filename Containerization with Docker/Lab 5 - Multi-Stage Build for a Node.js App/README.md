@@ -1,4 +1,4 @@
-# Lab 5: Multi-Stage Build for a Java Spring Boot App
+# Lab 5 - Multi-Stage Build for a Node.js App
 
 ## Overview
 This lab demonstrates the use of Docker multi-stage builds to produce an optimized container image for a Java Spring Boot application. The build is split into two stages: the first handles compilation and packaging using Maven, and the second produces a minimal runtime image containing only the JAR file. This approach significantly reduces the final image size compared to Labs 3 and 4.
