@@ -15,4 +15,4 @@ By the end of the lab, a fully packaged Java application (`ivolve-app.jar`) was 
 ![Commands History](Commands.png)
 
 ### Application Running
-![Application Running](Application_Running.png)
+![Application Running](Application-Running.png)
