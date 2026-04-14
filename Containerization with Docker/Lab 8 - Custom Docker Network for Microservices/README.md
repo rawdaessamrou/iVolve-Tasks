@@ -1,52 +1,60 @@
-# Lab 6: Managing Docker Environment Variables Across Build and Runtime
+# Lab 8: Custom Docker Network for Microservices
 
 ## Overview
-This lab demonstrates three different ways to pass environment variables to Docker containers. The same image was used to run three containers, each with different configurations for `APP_MODE` and `APP_REGION`, showcasing how Docker handles environment variables at both build time and runtime.
+This lab demonstrates how Docker custom networks enable isolated communication between containers. A frontend and backend service were containerized separately, and a custom network was used to control which containers could communicate with each other.
 
-## Dockerfile
+## Dockerfiles
+
+### Frontend
 ```dockerfile
-FROM python:3.9-slim
+FROM python:3.10
 
 WORKDIR /app
 
-COPY . /app
+COPY . .
 
-RUN pip install flask
+RUN pip install -r requirements.txt
 
-EXPOSE 8080
-
-ENV APP_MODE=production
-ENV APP_REGION=canada-west
+EXPOSE 5000
 
 CMD ["python", "app.py"]
 ```
 
-## Environment Variable Methods
+### Backend
+```dockerfile
+FROM python:3.10
 
-| Container | APP_MODE | APP_REGION | Method |
-|---|---|---|---|
-| dev-container | development | us-east | Passed inline via `-e` flags in the run command |
-| staging-container | staging | us-west | Loaded from a `staging.env` file using `--env-file` |
-| prod-container | production | canada-west | Set directly in the Dockerfile using `ENV` |
+WORKDIR /app
+
+COPY . .
+
+RUN pip install flask
+
+EXPOSE 5000
+
+CMD ["python", "app.py"]
+```
 
 ## Tools Used
-- **Docker** – Used to build the image and run the containers.
-- **Python 3.9 (slim)** – Lightweight base image for the Flask application.
-- **Flask** – Python web framework used to serve the app.
+- **Docker** – Used to build images, create the custom network, and run the containers.
+- **Python 3.10 / Flask** – Used for both the frontend and backend services.
 - **Git** – Used to clone the source code from GitHub.
 
-## Outcome
-A single Docker image named `docker-lab6-app` was built and used to run three containers simultaneously, each reflecting a different environment configuration. The correct variables were confirmed by accessing each container on its respective port (8081, 8082, 8083).
+## Network Behavior
 
+| Container | Network | Can reach backend? |
+|---|---|---|
+| frontend1 | ivolve-network | ✅ Yes |
+| frontend2 | default (bridge) | ❌ No |
+
+## Outcome
+A custom Docker network named `ivolve-network` was created. The backend container and `frontend1` were attached to it, allowing `frontend1` to successfully reach the backend by container name. `frontend2` was run on the default network and could not resolve the backend hostname, confirming that Docker custom networks provide DNS-based isolation between containers. The network was deleted after verification.
 
 ### Commands History
 ![Commands History](Commands.png)
 
-### dev-container (localhost:8081)
-![localhost:8081](Localhost-8081.png)
+### frontend1 (on ivolve-network) — Communication Successful
+![Frontend 1](Frontend-1.png)
 
-### staging-container (localhost:8082)
-![localhost:8082](Localhost-8082.png)
-
-### prod-container (localhost:8083)
-![localhost:8083](Localhost-8083.png)
+### frontend2 (on default network) — Communication Failed
+![Frontend 2](Frontend-2.png)
