@@ -1,0 +1,108 @@
+# nodejs-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nodejs-app
+  namespace: default
+  labels:
+    app: nodejs-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nodejs-app
+  template:
+    metadata:
+      labels:
+        app: nodejs-app
+    spec:
+      # ─────────────────────────────────────────
+      # INIT CONTAINER: Runs BEFORE the app starts
+      # ─────────────────────────────────────────
+      initContainers:
+        - name: db-init
+          image: mysql:5.7
+          env:
+            - name: MYSQL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_HOST
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: MYSQL_ROOT_PASSWORD
+            - name: MYSQL_APP_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_USER
+            - name: MYSQL_APP_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: MYSQL_APP_PASSWORD
+          command:
+            - /bin/sh
+            - -c
+            - |
+              echo "⏳ Waiting for MySQL to be ready..."
+              until mysql -h "$MYSQL_HOST" -u root -p"$MYSQL_ROOT_PASSWORD" -e "SELECT 1;" > /dev/null 2>&1; do
+                echo "MySQL not ready yet — retrying in 5s..."
+                sleep 5
+              done
+
+              echo "✅ MySQL is ready. Running DB setup..."
+
+              mysql -h "$MYSQL_HOST" -u root -p"$MYSQL_ROOT_PASSWORD" <<EOF
+              -- Create the ivolve database
+              CREATE DATABASE IF NOT EXISTS ivolve;
+
+              -- Create app user if not exists
+              CREATE USER IF NOT EXISTS '${MYSQL_APP_USER}'@'%' IDENTIFIED BY '${MYSQL_APP_PASSWORD}';
+
+              -- Grant all privileges on ivolve DB to app user
+              GRANT ALL PRIVILEGES ON ivolve.* TO '${MYSQL_APP_USER}'@'%';
+
+              -- Apply changes
+              FLUSH PRIVILEGES;
+              EOF
+
+              echo "🎉 Database 'ivolve' created and user '${MYSQL_APP_USER}' granted full access!"
+
+      # ─────────────────────────────────────────
+      # MAIN CONTAINER: Starts AFTER init completes
+      # ─────────────────────────────────────────
+      containers:
+        - name: nodejs-app
+          image: node_app:latest
+          ports:
+            - containerPort: 3000
+          env:
+            - name: DB_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_HOST
+            - name: DB_PORT
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_PORT
+            - name: DB_NAME
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_DATABASE
+            - name: DB_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: db-config
+                  key: MYSQL_USER
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: db-secret
+                  key: MYSQL_APP_PASSWORD
+          command: ["node", "server.js"]
