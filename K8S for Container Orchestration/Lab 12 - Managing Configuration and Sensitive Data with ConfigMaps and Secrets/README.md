@@ -11,7 +11,7 @@ metadata:
   name: mysql-config
   namespace: ivolve
 data:
-  DB_HOST: mysql-service
+  DB_HOST: podname.servicename.naespacename.svc.cluster.local
   DB_USER: ivolve_user
 ```
 
@@ -33,13 +33,13 @@ data:
 - **base64** – Used to encode sensitive values before storing them in the Secret.
 
 ## Outcome
-The ConfigMap and Secret were successfully applied to the `ivolve` namespace. Non-sensitive variables (`DB_HOST`, `DB_USER`) were stored in the ConfigMap, while sensitive credentials (`DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`) were base64-encoded and stored in an Opaque Secret. Both resources were verified using `kubectl get`.
+The ConfigMap and Secret were successfully applied to the `ivolve` namespace. Non-sensitive variables (`DB_HOST`, `DB_USER`) were stored in the ConfigMap, while sensitive credentials (`DB_PASSWORD`, `MYSQL_ROOT_PASSWORD`) were base64-encoded and stored in an Opaque Secret. The Secret values were decoded and verified using `kubectl get secret` with a jsonpath filter.
 
 ### Commands History
 ![Commands History](Commands.png)
 
-### Base64 Encoding
-![Encoding](Encoding.png)
+### ConfigMap & Secret Description
+![Verify 1](Verify1.png)
 
-### Verification
-![Verify](Verify.png)
+### Decoded Secret Values
+![Verify 2](Verify2.png)
