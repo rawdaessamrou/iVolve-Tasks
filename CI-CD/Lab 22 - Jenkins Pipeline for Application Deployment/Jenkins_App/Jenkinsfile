@@ -2,24 +2,34 @@ pipeline {
     agent any
 
     environment {
+        // Your specific data
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
+        // Adjust this path if your kubeconfig is stored elsewhere on the Jenkins server
+        KUBECONFIG = '/var/lib/jenkins/.kube/config' 
     }
 
     stages {
-        stage('Build App (Maven)') {
-            agent {
-                docker {
-                    image 'maven:3.9.6-eclipse-temurin-17'
-                    reuseNode true
-                    // Socket mount prevents the hang seen in image_8c0b55.png
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                }
+        stage('Checkout Code') {
+            steps {
+                // Checkout the repository
+                checkout scm
             }
+        }
+
+        stage('Run Unit Tests') {
             steps {
                 dir("${APP_DIR}") {
-                    // -B ensures non-interactive mode to prevent hanging
+                    // -B prevents hanging on dependency downloads
+                    sh 'mvn -B test'
+                }
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                dir("${APP_DIR}") {
                     sh 'mvn -B clean package -DskipTests'
                 }
             }
@@ -33,7 +43,7 @@ pipeline {
             }
         }
 
-        stage('Push to Docker Hub') {
+        stage('Push Image to DockerHub') {
             steps {
                 withCredentials([usernamePassword(
                     credentialsId: 'docker-credentials',
@@ -43,42 +53,32 @@ pipeline {
                     sh """
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        docker logout
+                        docker image rm ${IMAGE_NAME}:${IMAGE_TAG}
                     """
                 }
             }
         }
 
-        stage('Delete Local Image') {
-            steps {
-                sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
-            }
-        }
-
-        stage('Update Deployment YAML') {
+        stage('Update deployment.yaml') {
             steps {
                 dir("${APP_DIR}") {
-                    sh """
-                        sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' deployment.yaml
-                    """
+                    // Updates the image line in your YAML file
+                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                 }
+            }
+        }
+
+        stage('Test Kubernetes') {
+            steps {
+                // Verifies connection to the cluster
+                sh 'kubectl --kubeconfig=${KUBECONFIG} get nodes'
             }
         }
 
         stage('Deploy to Kubernetes') {
-            agent {
-                docker {
-                    image 'bitnami/kubectl:latest'
-                    reuseNode true
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
-                }
-            }
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG_FILE')]) {
-                    dir("${APP_DIR}") {
-                        // Using single quotes avoids the security warning in image_8bffd5.png
-                        sh 'export KUBECONFIG=$KUBE_CONFIG_FILE && kubectl apply -f deployment.yaml && kubectl get pods'
-                    }
+                dir("${APP_DIR}") {
+                    sh 'kubectl --kubeconfig=${KUBECONFIG} apply -f deployment.yaml'
                 }
             }
         }
@@ -86,14 +86,15 @@ pipeline {
 
     post {
         always {
-            echo 'Pipeline finished.'
+            echo 'Pipeline process finished.'
+            // Recommended: clean workspace to save disk space
             cleanWs()
         }
         success {
-            echo "Deployment successful! Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo 'Pipeline Finished ✅'
         }
         failure {
-            echo 'Pipeline failed. Check logs.'
+            echo 'Pipeline Failed ❌'
         }
     }
 }
