@@ -50,7 +50,7 @@ pipeline {
         }
 
         // ─────────────────────────────
-        // 3. Build & Push Docker Image
+        // 3. Docker Build & Push
         // ─────────────────────────────
         stage('Build & Push Image') {
             steps {
@@ -73,7 +73,7 @@ pipeline {
         }
 
         // ─────────────────────────────
-        // 4. Clean Local Image
+        // 4. Cleanup Local Image
         // ─────────────────────────────
         stage('Delete Local Image') {
             steps {
@@ -101,22 +101,27 @@ pipeline {
 
                     dir("${APP_DIR}") {
 
-                        // 🔥 Debug kubeconfig (REMOVE after success)
+                        // 🔍 Debug kubeconfig (remove later)
                         sh '''
-                            echo "=== KUBECONFIG CONTENT (server only) ==="
-                            cat "$KUBECONFIG_FILE" | grep server
+                            echo "=== KUBE SERVER ==="
+                            grep server "$KUBECONFIG_FILE"
                         '''
 
-                        // Update image in deployment
+                        // 🔧 Update image in deployment.yaml
                         sh """
                             sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml
                         """
 
-                        // Deploy to cluster
+                        // 🚀 Deploy safely (no OpenAPI validation + no TLS verification issues)
                         sh '''
                             export KUBECONFIG=$KUBECONFIG_FILE
 
-                            kubectl apply --validate=false -f deployment.yaml
+                            kubectl config use-context minikube || true
+
+                            kubectl apply --validate=false \
+                                --insecure-skip-tls-verify=true \
+                                -f deployment.yaml
+
                             kubectl get pods
                         '''
                     }
@@ -131,7 +136,6 @@ pipeline {
     post {
         always {
             cleanWs()
-            echo "Workspace cleaned"
         }
         success {
             echo "✅ Deployment successful: ${IMAGE_NAME}:${IMAGE_TAG}"
