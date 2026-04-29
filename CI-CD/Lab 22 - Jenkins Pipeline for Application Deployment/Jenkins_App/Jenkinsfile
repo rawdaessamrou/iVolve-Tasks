@@ -5,16 +5,9 @@ pipeline {
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
-        HOST_KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
 
     stages {
-        stage('Pre-Check') {
-            steps {
-                sh "ls -l ${HOST_KUBECONFIG}"
-            }
-        }
-
         stage('Build App') {
             agent { docker { image 'maven:3.9.6-eclipse-temurin-17'; reuseNode true } }
             steps {
@@ -34,20 +27,24 @@ pipeline {
             }
         }
 
-        stage('Deploy to K8s') {
+        stage('Deploy to Kubernetes') {
             agent {
                 docker { 
                     image 'bitnami/kubectl:latest'
                     reuseNode true
-                    // Mounts the verified config into the container's /tmp
-                    args "-v /var/run/docker.sock:/var/run/docker.sock -v ${HOST_KUBECONFIG}:/tmp/kubeconfig:ro --entrypoint=''"
+                    // We only need the docker socket here; credentials come from Jenkins
+                    args "-v /var/run/docker.sock:/var/run/docker.sock --entrypoint=''"
                 }
             }
             steps {
-                dir("${APP_DIR}") {
-                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
-                    sh 'kubectl --kubeconfig=/tmp/kubeconfig apply -f deployment.yaml'
-                    sh 'kubectl --kubeconfig=/tmp/kubeconfig get pods'
+                // configFileProvider or secret-file approach
+                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                    dir("${APP_DIR}") {
+                        sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
+                        // KUBECONFIG_PATH is a temporary path Jenkins creates automatically
+                        sh 'kubectl --kubeconfig=$KUBECONFIG_PATH apply -f deployment.yaml'
+                        sh 'kubectl --kubeconfig=$KUBECONFIG_PATH get pods'
+                    }
                 }
             }
         }
