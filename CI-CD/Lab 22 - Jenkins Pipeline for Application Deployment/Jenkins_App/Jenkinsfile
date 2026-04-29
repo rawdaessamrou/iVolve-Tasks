@@ -62,8 +62,9 @@ pipeline {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     dir("${APP_DIR}") {
                         sh '''
-                            kubectl --kubeconfig=$KUBECONFIG apply -f deployment.yaml
-                            kubectl --kubeconfig=$KUBECONFIG rollout status deployment/jenkins-app
+                            export KUBECONFIG=$KUBECONFIG
+                            kubectl apply -f deployment.yaml
+                            kubectl rollout status deployment/jenkins-app
                         '''
                     }
                 }
