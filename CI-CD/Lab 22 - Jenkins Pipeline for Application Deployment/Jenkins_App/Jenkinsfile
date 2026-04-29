@@ -43,7 +43,7 @@ pipeline {
 
         stage('Delete Local Image') {
             steps {
-                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG}'
+                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true'
             }
         }
 
@@ -59,15 +59,16 @@ pipeline {
 
         stage('Deploy to K8s') {
             steps {
-                dir("${APP_DIR}") {
-                    sh '''
-                        kubectl apply -f deployment.yaml
-                        kubectl rollout status deployment/jenkins-app
-                    '''
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                    dir("${APP_DIR}") {
+                        sh '''
+                            kubectl --kubeconfig=$KUBECONFIG apply -f deployment.yaml
+                            kubectl --kubeconfig=$KUBECONFIG rollout status deployment/jenkins-app
+                        '''
+                    }
                 }
             }
         }
-
     }
 
     post {
