@@ -2,32 +2,34 @@ pipeline {
     agent any
 
     environment {
-        // Your specific data
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
-        // Adjust this path if your kubeconfig is stored elsewhere on the Jenkins server
         KUBECONFIG = '/var/lib/jenkins/.kube/config' 
     }
 
     stages {
         stage('Checkout Code') {
             steps {
-                // Checkout the repository
                 checkout scm
             }
         }
 
         stage('Run Unit Tests') {
+            agent {
+                docker { image 'maven:3.9.6-eclipse-temurin-17'; reuseNode true }
+            }
             steps {
                 dir("${APP_DIR}") {
-                    // -B prevents hanging on dependency downloads
                     sh 'mvn -B test'
                 }
             }
         }
 
         stage('Build App') {
+            agent {
+                docker { image 'maven:3.9.6-eclipse-temurin-17'; reuseNode true }
+            }
             steps {
                 dir("${APP_DIR}") {
                     sh 'mvn -B clean package -DskipTests'
@@ -62,7 +64,6 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 dir("${APP_DIR}") {
-                    // Updates the image line in your YAML file
                     sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                 }
             }
@@ -70,7 +71,6 @@ pipeline {
 
         stage('Test Kubernetes') {
             steps {
-                // Verifies connection to the cluster
                 sh 'kubectl --kubeconfig=${KUBECONFIG} get nodes'
             }
         }
@@ -87,14 +87,9 @@ pipeline {
     post {
         always {
             echo 'Pipeline process finished.'
-            // Recommended: clean workspace to save disk space
             cleanWs()
         }
-        success {
-            echo 'Pipeline Finished ✅'
-        }
-        failure {
-            echo 'Pipeline Failed ❌'
-        }
+        success { echo 'Pipeline Finished ✅' }
+        failure { echo 'Pipeline Failed ❌' }
     }
 }
