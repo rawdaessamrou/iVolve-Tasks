@@ -9,21 +9,10 @@ pipeline {
     }
 
     stages {
-        stage('Pre-Check: Kubeconfig') {
+        stage('Pre-Check') {
             steps {
-                sh """
-                    if [ ! -f ${HOST_KUBECONFIG} ]; then
-                        echo "❌ ERROR: Kubeconfig file not found at ${HOST_KUBECONFIG}"
-                        exit 1
-                    else
-                        echo "✅ Kubeconfig found."
-                    fi
-                """
+                sh "ls -l ${HOST_KUBECONFIG}"
             }
-        }
-
-        stage('Checkout Code') {
-            steps { checkout scm }
         }
 
         stage('Build App') {
@@ -33,23 +22,24 @@ pipeline {
             }
         }
 
-        stage('Build & Push Docker') {
+        stage('Build & Push Image') {
             steps {
                 dir("${APP_DIR}") {
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                     withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'U', passwordVariable: 'P')]) {
-                        sh "echo $P | docker login -u $U --password-stdin"
+                        sh "echo \$P | docker login -u \$U --password-stdin"
                         sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                     }
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage('Deploy to K8s') {
             agent {
                 docker { 
                     image 'bitnami/kubectl:latest'
                     reuseNode true
+                    // Mounts the verified config into the container's /tmp
                     args "-v /var/run/docker.sock:/var/run/docker.sock -v ${HOST_KUBECONFIG}:/tmp/kubeconfig:ro --entrypoint=''"
                 }
             }
@@ -64,7 +54,8 @@ pipeline {
     }
 
     post {
-        success { echo "Deployment Complete! 🚀" }
-        failure { echo "Pipeline failed. Check Kubeconfig or Docker Hub credentials. ❌" }
+        always { cleanWs() }
+        success { echo "Deployment Finished Successfully! ✅" }
+        failure { echo "Pipeline Failed. ❌" }
     }
 }
