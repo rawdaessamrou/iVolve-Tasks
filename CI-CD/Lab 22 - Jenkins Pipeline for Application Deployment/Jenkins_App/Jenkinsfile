@@ -2,62 +2,45 @@ pipeline {
     agent any
 
     environment {
-        // Your Project Data
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
-        
-        // This is the absolute path to the kubeconfig on your Jenkins Server
         HOST_KUBECONFIG = '/var/lib/jenkins/.kube/config'
     }
 
     stages {
+        stage('Pre-Check: Kubeconfig') {
+            steps {
+                sh """
+                    if [ ! -f ${HOST_KUBECONFIG} ]; then
+                        echo "❌ ERROR: Kubeconfig file not found at ${HOST_KUBECONFIG}"
+                        exit 1
+                    else
+                        echo "✅ Kubeconfig found."
+                    fi
+                """
+            }
+        }
+
         stage('Checkout Code') {
+            steps { checkout scm }
+        }
+
+        stage('Build App') {
+            agent { docker { image 'maven:3.9.6-eclipse-temurin-17'; reuseNode true } }
             steps {
-                checkout scm
+                dir("${APP_DIR}") { sh 'mvn -B clean package -DskipTests' }
             }
         }
 
-        stage('Build App (Maven)') {
-            agent {
-                docker { 
-                    image 'maven:3.9.6-eclipse-temurin-17'
-                    reuseNode true 
-                }
-            }
+        stage('Build & Push Docker') {
             steps {
                 dir("${APP_DIR}") {
-                    // -B ensures non-interactive downloads
-                    sh 'mvn -B clean package -DskipTests'
-                }
-            }
-        }
-
-        stage('Build & Push Docker Image') {
-            steps {
-                dir("${APP_DIR}") {
-                    // Building on the host engine
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
-                    
-                    withCredentials([usernamePassword(
-                        credentialsId: 'docker-credentials', 
-                        usernameVariable: 'DOCKER_USER', 
-                        passwordVariable: 'DOCKER_PASS'
-                    )]) {
-                        sh """
-                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
-                            docker push ${IMAGE_NAME}:${IMAGE_TAG}
-                        """
+                    withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'U', passwordVariable: 'P')]) {
+                        sh "echo $P | docker login -u $U --password-stdin"
+                        sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                     }
-                }
-            }
-        }
-
-        stage('Update Kubernetes Manifest') {
-            steps {
-                dir("${APP_DIR}") {
-                    // Replaces the image tag in deployment.yaml
-                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                 }
             }
         }
@@ -67,16 +50,12 @@ pipeline {
                 docker { 
                     image 'bitnami/kubectl:latest'
                     reuseNode true
-                    // MOUNT FIX: 
-                    // 1. Mounts Docker socket for communication
-                    // 2. Mounts the Host Kubeconfig into the container at /tmp/kubeconfig
-                    // 3. Disables the default entrypoint to prevent the crash from image_8b9318.png
-                    args "-v /var/run/docker.sock:/var/run/docker.sock -v ${HOST_KUBECONFIG}:/tmp/kubeconfig --entrypoint=''"
+                    args "-v /var/run/docker.sock:/var/run/docker.sock -v ${HOST_KUBECONFIG}:/tmp/kubeconfig:ro --entrypoint=''"
                 }
             }
             steps {
                 dir("${APP_DIR}") {
-                    // We point kubectl specifically to the mounted file inside the container
+                    sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                     sh 'kubectl --kubeconfig=/tmp/kubeconfig apply -f deployment.yaml'
                     sh 'kubectl --kubeconfig=/tmp/kubeconfig get pods'
                 }
@@ -85,15 +64,7 @@ pipeline {
     }
 
     post {
-        always {
-            echo 'Cleaning up workspace...'
-            cleanWs()
-        }
-        success {
-            echo 'Deployment Successful! ✅'
-        }
-        failure {
-            echo 'Pipeline Failed. Please check the console output for specific errors. ❌'
-        }
+        success { echo "Deployment Complete! 🚀" }
+        failure { echo "Pipeline failed. Check Kubeconfig or Docker Hub credentials. ❌" }
     }
 }
