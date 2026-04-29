@@ -4,21 +4,24 @@ pipeline {
     environment {
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
+        // Added quotes around the path to handle spaces safely
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
     }
 
     stages {
-
         stage('Build App (Maven)') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
                     reuseNode true
+                    // CRITICAL: Mounts the docker socket so the container can start/run
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
                 dir("${APP_DIR}") {
-                    sh 'mvn clean package -DskipTests'
+                    // Added -B for Batch Mode to prevent hanging on prompts
+                    sh 'mvn -B clean package -DskipTests'
                 }
             }
         }
@@ -26,7 +29,8 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir("${APP_DIR}") {
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                    // Use double quotes to ensure variables are replaced
+                    sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
         }
@@ -38,18 +42,20 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh '''
+                    // Use double quotes for the block to allow ${IMAGE_NAME} to resolve
+                    sh """
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
                         docker logout
-                    '''
+                    """
                 }
             }
         }
 
         stage('Delete Local Image') {
             steps {
-                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true'
+                // Use double quotes
+                sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
 
@@ -68,16 +74,17 @@ pipeline {
                 docker {
                     image 'bitnami/kubectl:latest'
                     reuseNode true
+                    args '-v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG_FILE')]) {
                     dir("${APP_DIR}") {
-                        sh '''
-                            export KUBECONFIG=$KUBECONFIG
+                        sh """
+                            export KUBECONFIG=${KUBE_CONFIG_FILE}
                             kubectl apply -f deployment.yaml
                             kubectl get pods
-                        '''
+                        """
                     }
                 }
             }
