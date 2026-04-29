@@ -4,26 +4,33 @@ pipeline {
     environment {
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
+        APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
     }
 
     stages {
 
         stage('Unit Test') {
             steps {
-                sh 'npm install'
-                sh 'npm test'
+                dir("${APP_DIR}") {
+                    sh 'npm install'
+                    sh 'npm test'
+                }
             }
         }
 
         stage('Build App') {
             steps {
-                sh 'npm run build'
+                dir("${APP_DIR}") {
+                    sh 'npm run build'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                dir("${APP_DIR}") {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+                }
             }
         }
 
@@ -51,18 +58,22 @@ pipeline {
 
         stage('Update Deployment YAML') {
             steps {
-                sh """
-                    sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' k8s/deployment.yaml
-                """
+                dir("${APP_DIR}") {
+                    sh """
+                        sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' k8s/deployment.yaml
+                    """
+                }
             }
         }
 
         stage('Deploy to K8s') {
             steps {
-                sh '''
-                    kubectl apply -f deployment.yaml
-                    kubectl rollout status deployment/jenkins-app
-                '''
+                dir("${APP_DIR}") {
+                    sh '''
+                        kubectl apply -f k8s/deployment.yaml
+                        kubectl rollout status deployment/jenkins-app
+                    '''
+                }
             }
         }
 
