@@ -8,10 +8,6 @@ pipeline {
     }
 
     stages {
-
-        // ─────────────────────────────
-        // 1. Unit Test
-        // ─────────────────────────────
         stage('Unit Test') {
             agent {
                 docker {
@@ -31,10 +27,6 @@ pipeline {
                 }
             }
         }
-
-        // ─────────────────────────────
-        // 2. Build App
-        // ─────────────────────────────
         stage('Build App') {
             agent {
                 docker {
@@ -48,10 +40,6 @@ pipeline {
                 }
             }
         }
-
-        // ─────────────────────────────
-        // 3. Docker Build & Push
-        // ─────────────────────────────
         stage('Build & Push Image') {
             steps {
                 dir("${APP_DIR}") {
@@ -71,19 +59,11 @@ pipeline {
                 }
             }
         }
-
-        // ─────────────────────────────
-        // 4. Cleanup Local Image
-        // ─────────────────────────────
         stage('Delete Local Image') {
             steps {
                 sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
-
-        // ─────────────────────────────
-        // 5. Deploy to Kubernetes (SAFE MODE)
-        // ─────────────────────────────
         stage('Deploy to Kubernetes') {
 
             agent {
@@ -103,18 +83,15 @@ pipeline {
 
                     dir("${APP_DIR}") {
 
-                        // Debug kubeconfig (safe check)
                         sh '''
                             echo "=== KUBE SERVER ==="
                             grep server "$KUBECONFIG_FILE" || true
                         '''
 
-                        // Update deployment image
                         sh """
                             sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml
                         """
 
-                        // 🚨 SAFE DEPLOY (won’t break pipeline if cluster is unreachable)
                         sh '''
                             export KUBECONFIG=$KUBECONFIG_FILE
 
@@ -132,10 +109,6 @@ pipeline {
             }
         }
     }
-
-    // ─────────────────────────────
-    // Post Actions
-    // ─────────────────────────────
     post {
         always {
             cleanWs()
