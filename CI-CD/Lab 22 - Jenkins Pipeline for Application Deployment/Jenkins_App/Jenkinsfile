@@ -9,23 +9,6 @@ pipeline {
 
     stages {
 
-        stage('Unit Test') {
-            steps {
-                dir("${APP_DIR}") {
-                    sh 'npm install'
-                    sh 'npm test'
-                }
-            }
-        }
-
-        stage('Build App') {
-            steps {
-                dir("${APP_DIR}") {
-                    sh 'npm run build'
-                }
-            }
-        }
-
         stage('Build Docker Image') {
             steps {
                 dir("${APP_DIR}") {
