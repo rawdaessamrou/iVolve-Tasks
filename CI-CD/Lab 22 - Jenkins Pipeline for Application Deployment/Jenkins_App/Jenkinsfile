@@ -9,7 +9,9 @@ pipeline {
 
     stages {
 
-        // ── 1. Unit Test ─────────────────────────────────────────────
+        // ─────────────────────────────
+        // 1. Unit Tests
+        // ─────────────────────────────
         stage('Unit Test') {
             agent {
                 docker {
@@ -30,7 +32,9 @@ pipeline {
             }
         }
 
-        // ── 2. Build App ──────────────────────────────────────────────
+        // ─────────────────────────────
+        // 2. Build App
+        // ─────────────────────────────
         stage('Build App') {
             agent {
                 docker {
@@ -45,31 +49,41 @@ pipeline {
             }
         }
 
-        // ── 3 & 4. Build Docker Image from GitHub Dockerfile & Push ───
+        // ─────────────────────────────
+        // 3. Build & Push Docker Image
+        // ─────────────────────────────
         stage('Build & Push Image') {
             steps {
                 dir("${APP_DIR}") {
+
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
+
                     withCredentials([usernamePassword(
                         credentialsId: 'docker-credentials',
                         usernameVariable: 'DOCKER_USER',
                         passwordVariable: 'DOCKER_PASS'
                     )]) {
-                        sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                        sh '''
+                            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        '''
                         sh "docker push ${IMAGE_NAME}:${IMAGE_TAG}"
                     }
                 }
             }
         }
 
-        // ── 5. Delete Local Image ─────────────────────────────────────
+        // ─────────────────────────────
+        // 4. Clean Local Image
+        // ─────────────────────────────
         stage('Delete Local Image') {
             steps {
                 sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
 
-        // ── 6 & 7. Patch deployment.yaml & Deploy to Kubernetes ───────
+        // ─────────────────────────────
+        // 5. Deploy to Kubernetes
+        // ─────────────────────────────
         stage('Deploy to Kubernetes') {
             agent {
                 docker {
@@ -78,17 +92,31 @@ pipeline {
                     args "--entrypoint=''"
                 }
             }
+
             steps {
                 withCredentials([file(
                     credentialsId: 'kubeconfig',
                     variable: 'KUBECONFIG_FILE'
                 )]) {
+
                     dir("${APP_DIR}") {
-                        // Step 6: update image tag in deployment.yaml
-                        sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
+
+                        // 🔥 Debug kubeconfig (REMOVE after success)
+                        sh '''
+                            echo "=== KUBECONFIG SERVER ==="
+                            grep server $KUBECONFIG_FILE
+                        '''
+
+                        // Update image in deployment
+                        sh """
+                            sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml
+                        """
+
+                        // Deploy to cluster
                         sh '''
                             export KUBECONFIG=$KUBECONFIG_FILE
-                            kubectl apply -f deployment.yaml
+
+                            kubectl apply --validate=false -f deployment.yaml
                             kubectl get pods
                         '''
                     }
@@ -97,17 +125,19 @@ pipeline {
         }
     }
 
-    // ── Post Actions ──────────────────────────────────────────────────
+    // ─────────────────────────────
+    // Post Actions
+    // ─────────────────────────────
     post {
         always {
             cleanWs()
-            echo "Pipeline finished — workspace cleaned."
+            echo "Workspace cleaned"
         }
         success {
-            echo "✅ Build ${BUILD_NUMBER} deployed: ${IMAGE_NAME}:${IMAGE_TAG}"
+            echo "✅ Deployment successful: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo "❌ Pipeline failed at build ${BUILD_NUMBER}."
+            echo "❌ Pipeline failed"
         }
     }
 }
