@@ -1,0 +1,83 @@
+pipeline {
+    agent any
+
+    environment {
+        IMAGE_NAME = "rawdaessamrou/jenkins-app"
+        IMAGE_TAG  = "v${BUILD_NUMBER}"
+    }
+
+    stages {
+
+        stage('Unit Test') {
+            steps {
+                sh 'npm install'
+                sh 'npm test'
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                sh 'npm run build'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} .'
+            }
+        }
+
+        stage('Push to Docker Hub') {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'dockerhub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh '''
+                        echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                        docker push ${IMAGE_NAME}:${IMAGE_TAG}
+                        docker logout
+                    '''
+                }
+            }
+        }
+
+        stage('Delete Local Image') {
+            steps {
+                sh 'docker rmi ${IMAGE_NAME}:${IMAGE_TAG}'
+            }
+        }
+
+        stage('Update Deployment YAML') {
+            steps {
+                sh """
+                    sed -i 's|image: ${IMAGE_NAME}:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|g' k8s/deployment.yaml
+                """
+            }
+        }
+
+        stage('Deploy to K8s') {
+            steps {
+                sh '''
+                    kubectl apply -f deployment.yaml
+                    kubectl rollout status deployment/jenkins-app
+                '''
+            }
+        }
+
+    }
+
+    post {
+        always {
+            echo 'Pipeline finished.'
+            cleanWs()
+        }
+        success {
+            echo "Deployment successful! Image: ${IMAGE_NAME}:${IMAGE_TAG}"
+        }
+        failure {
+            echo 'Pipeline failed. Check the console output for details.'
+        }
+    }
+}
