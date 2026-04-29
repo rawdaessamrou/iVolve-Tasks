@@ -9,7 +9,7 @@ pipeline {
 
     stages {
 
-        stage('Build App') {
+        stage('Build App (Maven)') {
             agent {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
@@ -63,7 +63,13 @@ pipeline {
             }
         }
 
-        stage('Deploy to K8s') {
+        stage('Deploy to Kubernetes') {
+            agent {
+                docker {
+                    image 'bitnami/kubectl:latest'
+                    reuseNode true
+                }
+            }
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     dir("${APP_DIR}") {
@@ -87,7 +93,7 @@ pipeline {
             echo "Deployment successful! Image: ${IMAGE_NAME}:${IMAGE_TAG}"
         }
         failure {
-            echo 'Pipeline failed. Check the console output for details.'
+            echo 'Pipeline failed. Check logs.'
         }
     }
 }
