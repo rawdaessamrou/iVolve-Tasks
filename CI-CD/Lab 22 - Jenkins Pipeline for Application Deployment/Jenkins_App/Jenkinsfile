@@ -38,7 +38,7 @@ pipeline {
             }
             steps {
                 // configFileProvider or secret-file approach
-                withCredentials([file(credentialsId: 'kubeconfig-file', variable: 'KUBECONFIG_PATH')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG_PATH')]) {
                     dir("${APP_DIR}") {
                         sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                         // KUBECONFIG_PATH is a temporary path Jenkins creates automatically
