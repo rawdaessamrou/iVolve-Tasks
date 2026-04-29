@@ -76,7 +76,7 @@ pipeline {
                         sh '''
                             export KUBECONFIG=$KUBECONFIG
                             kubectl apply -f deployment.yaml
-                            kubectl rollout status deployment/jenkins-app
+                            kubectl get pods
                         '''
                     }
                 }
