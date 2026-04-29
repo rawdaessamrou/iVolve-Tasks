@@ -4,7 +4,6 @@ pipeline {
     environment {
         IMAGE_NAME = "rawdaessamrou/jenkins-app"
         IMAGE_TAG  = "v${BUILD_NUMBER}"
-        // Added quotes around the path to handle spaces safely
         APP_DIR    = "CI-CD/Lab 22 - Jenkins Pipeline for Application Deployment/Jenkins_App"
     }
 
@@ -14,13 +13,13 @@ pipeline {
                 docker {
                     image 'maven:3.9.6-eclipse-temurin-17'
                     reuseNode true
-                    // CRITICAL: Mounts the docker socket so the container can start/run
+                    // Socket mount prevents the hang seen in image_8c0b55.png
                     args '-v /var/run/docker.sock:/var/run/docker.sock'
                 }
             }
             steps {
                 dir("${APP_DIR}") {
-                    // Added -B for Batch Mode to prevent hanging on prompts
+                    // -B ensures non-interactive mode to prevent hanging
                     sh 'mvn -B clean package -DskipTests'
                 }
             }
@@ -29,7 +28,6 @@ pipeline {
         stage('Build Docker Image') {
             steps {
                 dir("${APP_DIR}") {
-                    // Use double quotes to ensure variables are replaced
                     sh "docker build -t ${IMAGE_NAME}:${IMAGE_TAG} ."
                 }
             }
@@ -42,7 +40,6 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    // Use double quotes for the block to allow ${IMAGE_NAME} to resolve
                     sh """
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
                         docker push ${IMAGE_NAME}:${IMAGE_TAG}
@@ -54,7 +51,6 @@ pipeline {
 
         stage('Delete Local Image') {
             steps {
-                // Use double quotes
                 sh "docker rmi ${IMAGE_NAME}:${IMAGE_TAG} || true"
             }
         }
@@ -80,11 +76,8 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBE_CONFIG_FILE')]) {
                     dir("${APP_DIR}") {
-                        sh """
-                            export KUBECONFIG=${KUBE_CONFIG_FILE}
-                            kubectl apply -f deployment.yaml
-                            kubectl get pods
-                        """
+                        // Using single quotes avoids the security warning in image_8bffd5.png
+                        sh 'export KUBECONFIG=$KUBE_CONFIG_FILE && kubectl apply -f deployment.yaml && kubectl get pods'
                     }
                 }
             }
