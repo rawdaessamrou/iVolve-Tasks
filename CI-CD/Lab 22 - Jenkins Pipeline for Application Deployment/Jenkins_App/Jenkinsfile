@@ -103,8 +103,8 @@ pipeline {
 
                         // 🔥 Debug kubeconfig (REMOVE after success)
                         sh '''
-                            echo "=== KUBECONFIG SERVER ==="
-                            grep server $KUBECONFIG_FILE
+                            echo "=== KUBECONFIG CONTENT (server only) ==="
+                            cat "$KUBECONFIG_FILE" | grep server
                         '''
 
                         // Update image in deployment
