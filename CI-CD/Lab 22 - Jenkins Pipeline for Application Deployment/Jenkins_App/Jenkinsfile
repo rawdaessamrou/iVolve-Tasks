@@ -70,7 +70,6 @@ pipeline {
         stage('Update deployment.yaml') {
             steps {
                 dir("${APP_DIR}") {
-                    // Automatically updates the image version in your manifest
                     sh "sed -i 's|image:.*|image: ${IMAGE_NAME}:${IMAGE_TAG}|' deployment.yaml"
                 }
             }
@@ -81,7 +80,7 @@ pipeline {
                 docker { 
                     image 'bitnami/kubectl:latest'
                     reuseNode true
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args "-v /var/run/docker.sock:/var/run/docker.sock --entrypoint=''"
                 }
             }
             steps {
@@ -94,7 +93,7 @@ pipeline {
                 docker { 
                     image 'bitnami/kubectl:latest'
                     reuseNode true
-                    args '-v /var/run/docker.sock:/var/run/docker.sock'
+                    args "-v /var/run/docker.sock:/var/run/docker.sock --entrypoint=''"
                 }
             }
             steps {
