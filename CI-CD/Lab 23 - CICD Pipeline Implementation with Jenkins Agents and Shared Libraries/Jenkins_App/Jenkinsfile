@@ -18,7 +18,7 @@ pipeline {
         stage('RunUnitTest') {
             steps {
                 // Assuming you have a script in vars/runTests.groovy
-                runTests() 
+                runUnitTest()
             }
         }
 
