@@ -1,0 +1,72 @@
+@Library('my-shared-library') _
+
+pipeline {
+    agent { label 'agent-1' } // Uses the agent you just fixed
+
+    environment {
+        DOCKER_IMAGE = "my-registry/jenkins-app:${env.BUILD_ID}"
+        DOCKER_CREDENTIALS_ID = 'docker-hub-creds'
+    }
+
+    stages {
+        stage('Clone Source') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('RunUnitTest') {
+            steps {
+                // Assuming you have a script in vars/runTests.groovy
+                runTests() 
+            }
+        }
+
+        stage('BuildApp') {
+            steps {
+                buildApp()
+            }
+        }
+
+        stage('BuildImage') {
+            steps {
+                buildImage(env.DOCKER_IMAGE)
+            }
+        }
+
+        stage('ScanImage') {
+            steps {
+                // Example using Trivy or similar
+                sh "trivy image ${env.DOCKER_IMAGE}"
+            }
+        }
+
+        stage('PushImage') {
+            steps {
+                script {
+                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
+                        sh "docker push ${env.DOCKER_IMAGE}"
+                    }
+                }
+            }
+        }
+
+        stage('RemoveImageLocally') {
+            steps {
+                sh "docker rmi ${env.DOCKER_IMAGE}"
+            }
+        }
+
+        stage('DeployOnK8s') {
+            steps {
+                deployK8s('deployment.yaml')
+            }
+        }
+    }
+
+    post {
+        always {
+            cleanWs()
+        }
+    }
+}
