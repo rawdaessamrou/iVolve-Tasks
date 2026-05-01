@@ -31,7 +31,7 @@ pipeline {
             steps { removeImageLocally(env.DOCKER_IMAGE) }
         }
         stage('DeployOnK8s') {
-            steps { deployOnK8s('kubeconfig') }
+            steps { deployOnK8s() }
         }
     }
     post { always { cleanWs() } }
