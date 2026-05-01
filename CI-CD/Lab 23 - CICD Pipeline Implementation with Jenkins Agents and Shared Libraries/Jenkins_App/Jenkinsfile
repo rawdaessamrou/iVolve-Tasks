@@ -4,7 +4,7 @@ pipeline {
     agent { label 'agent-1' } // Uses the agent you just fixed
 
     environment {
-        DOCKER_IMAGE = "my-registry/jenkins-app:${env.BUILD_ID}"
+        DOCKER_IMAGE = "rawdaessamrou/jenkins-app:${env.BUILD_ID}"
         DOCKER_CREDENTIALS_ID = 'docker-credentials'
     }
 
