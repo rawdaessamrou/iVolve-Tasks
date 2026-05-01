@@ -1,7 +1,7 @@
 @Library('my-shared-library') _
 
 pipeline {
-    agent { label 'agent-1' } // Uses the agent you just fixed
+    agent { label 'agent-1' }
 
     environment {
         DOCKER_IMAGE = "rawdaessamrou/jenkins-app:${env.BUILD_ID}"
@@ -10,63 +10,29 @@ pipeline {
 
     stages {
         stage('Clone Source') {
-            steps {
-                checkout scm
-            }
+            steps { checkout scm }
         }
-
         stage('RunUnitTest') {
-            steps {
-                // Assuming you have a script in vars/runTests.groovy
-                runUnitTest()
-            }
+            steps { runUnitTest() }
         }
-
         stage('BuildApp') {
-            steps {
-                buildApp()
-            }
+            steps { buildApp() }
         }
-
         stage('BuildImage') {
-            steps {
-                buildImage(env.DOCKER_IMAGE)
-            }
+            steps { buildImage(env.DOCKER_IMAGE) }
         }
-
         stage('ScanImage') {
-            steps {
-                // Example using Trivy or similar
-                sh "trivy image ${env.DOCKER_IMAGE}"
-            }
+            steps { scanImage(env.DOCKER_IMAGE) }
         }
-
         stage('PushImage') {
-            steps {
-                script {
-                    docker.withRegistry('', DOCKER_CREDENTIALS_ID) {
-                        sh "docker push ${env.DOCKER_IMAGE}"
-                    }
-                }
-            }
+            steps { pushImage(env.DOCKER_IMAGE, DOCKER_CREDENTIALS_ID) }
         }
-
         stage('RemoveImageLocally') {
-            steps {
-                sh "docker rmi ${env.DOCKER_IMAGE}"
-            }
+            steps { removeImageLocally(env.DOCKER_IMAGE) }
         }
-
         stage('DeployOnK8s') {
-            steps {
-                deployK8s('deployment.yaml')
-            }
+            steps { deployOnK8s('kubeconfig') }
         }
     }
-
-    post {
-        always {
-            cleanWs()
-        }
-    }
+    post { always { cleanWs() } }
 }
