@@ -12,25 +12,13 @@ pipeline {
         stage('Clone Source') {
             steps { checkout scm }
         }
-        stage('RunUnitTest') {
-            steps { runUnitTest() }
+        stage('Build & Test') {
+            steps { buildAndTest() }
         }
-        stage('BuildApp') {
-            steps { buildApp() }
+        stage('Image: Build → Scan → Push → Cleanup') {
+            steps { imageLifecycle(env.DOCKER_IMAGE, DOCKER_CREDENTIALS_ID) }
         }
-        stage('BuildImage') {
-            steps { buildImage(env.DOCKER_IMAGE) }
-        }
-        stage('ScanImage') {
-            steps { scanImage(env.DOCKER_IMAGE) }
-        }
-        stage('PushImage') {
-            steps { pushImage(env.DOCKER_IMAGE, DOCKER_CREDENTIALS_ID) }
-        }
-        stage('RemoveImageLocally') {
-            steps { removeImageLocally(env.DOCKER_IMAGE) }
-        }
-        stage('DeployOnK8s') {
+        stage('Deploy on K8s') {
             steps { deployOnK8s() }
         }
     }
