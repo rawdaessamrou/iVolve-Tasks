@@ -17,4 +17,4 @@ spec:
       - name: jenkins-app
         image: rawdaessamrou/jenkins-app:latest
         ports:
-        - containerPort: 3000
+        - containerPort: 8080
