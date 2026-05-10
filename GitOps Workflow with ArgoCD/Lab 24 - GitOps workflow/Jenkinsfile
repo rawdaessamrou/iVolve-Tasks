@@ -47,7 +47,11 @@ pipeline {
 
         stage('Update deployment.yaml') {
             steps {
-                withCredentials([string(credentialsId: 'github-credintials', variable: 'GH_TOKEN')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credintials',
+                    usernameVariable: 'GH_USER',
+                    passwordVariable: 'GH_TOKEN'
+                )]) {
                     sh """
                         git clone https://\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git manifest-repo
                         cd "manifest-repo/${MANIFEST_PATH}"
@@ -59,14 +63,18 @@ pipeline {
 
         stage('Push Updated Manifest to GitHub') {
             steps {
-                withCredentials([string(credentialsId: 'github-credintials', variable: 'GH_TOKEN')]) {
+                withCredentials([usernamePassword(
+                    credentialsId: 'github-credintials',
+                    usernameVariable: 'GH_USER',
+                    passwordVariable: 'GH_TOKEN'
+                )]) {
                     sh """
                         cd manifest-repo
                         git config user.email "ci@jenkins.local"
                         git config user.name "Jenkins CI"
                         git add "${MANIFEST_PATH}/deployment.yaml"
                         git commit -m "ci: update image to ${DOCKER_IMAGE}:${IMAGE_TAG}"
-                        git push https://\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git main
+                        git push https://\${GH_USER}:\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git main
                     """
                 }
             }
