@@ -47,7 +47,7 @@ pipeline {
 
         stage('Update deployment.yaml') {
             steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                withCredentials([string(credentialsId: 'github-credintials', variable: 'GH_TOKEN')]) {
                     sh """
                         git clone https://\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git manifest-repo
                         cd "manifest-repo/${MANIFEST_PATH}"
@@ -59,7 +59,7 @@ pipeline {
 
         stage('Push Updated Manifest to GitHub') {
             steps {
-                withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
+                withCredentials([string(credentialsId: 'github-credintials', variable: 'GH_TOKEN')]) {
                     sh """
                         cd manifest-repo
                         git config user.email "ci@jenkins.local"
