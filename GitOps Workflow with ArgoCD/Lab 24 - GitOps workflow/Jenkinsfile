@@ -2,9 +2,9 @@ pipeline {
     agent any
 
     environment {
-        DOCKER_IMAGE = "rawdaessamrou/jenkins-app"
-        IMAGE_TAG    = "${BUILD_NUMBER}"
-        MANIFEST_REPO = "https://github.com/rawdaessamrou/iVolve-Tasks.git"
+        DOCKER_IMAGE  = "rawdaessamrou/jenkins-app"
+        IMAGE_TAG     = "${BUILD_NUMBER}"
+        APP_DIR       = "GitOps Workflow with ArgoCD/Lab 24 - GitOps workflow/Jenkins_App"
         MANIFEST_PATH = "GitOps Workflow with ArgoCD/Lab 24 - GitOps workflow"
     }
 
@@ -12,13 +12,17 @@ pipeline {
 
         stage('Build App') {
             steps {
-                sh 'npm install'
+                dir("${APP_DIR}") {
+                    sh 'mvn clean package -DskipTests'
+                }
             }
         }
 
         stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
+                dir("${APP_DIR}") {
+                    sh "docker build -t ${DOCKER_IMAGE}:${IMAGE_TAG} ."
+                }
             }
         }
 
@@ -45,8 +49,8 @@ pipeline {
             steps {
                 withCredentials([string(credentialsId: 'github-token', variable: 'GH_TOKEN')]) {
                     sh """
-                        git clone https://${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git manifest-repo
-                        cd manifest-repo/"${MANIFEST_PATH}"
+                        git clone https://\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git manifest-repo
+                        cd "manifest-repo/${MANIFEST_PATH}"
                         sed -i 's|image: ${DOCKER_IMAGE}:.*|image: ${DOCKER_IMAGE}:${IMAGE_TAG}|g' deployment.yaml
                     """
                 }
@@ -62,7 +66,7 @@ pipeline {
                         git config user.name "Jenkins CI"
                         git add "${MANIFEST_PATH}/deployment.yaml"
                         git commit -m "ci: update image to ${DOCKER_IMAGE}:${IMAGE_TAG}"
-                        git push https://${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git main
+                        git push https://\${GH_TOKEN}@github.com/rawdaessamrou/iVolve-Tasks.git main
                     """
                 }
             }
