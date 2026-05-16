@@ -1,4 +1,4 @@
-# Lab 25 — Initial Ansible Configuration and Ad-Hoc Execution
+# Lab 25: Initial Ansible Configuration and Ad-Hoc Execution
 
 ## Overview
 
