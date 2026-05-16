@@ -4,12 +4,6 @@
 
 This lab covers the foundational setup of Ansible Automation Platform on a control node, establishing secure SSH-based communication with a managed node, defining an inventory, and executing ad-hoc commands to interact with remote hosts — all without writing a single playbook.
 
-## Environment
-
-| Role | Host | IP Address | User |
-|---|---|---|---|
-| Control Node | 3abcarinho-PC (WSL2) | — | looogyyyy |
-| Managed Node | Ubuntu 24.04.4 LTS (WSL2) | 172.27.245.232 | looogyyyy |
 
 ## What Was Done
 
@@ -33,7 +27,7 @@ ansible_python_interpreter=/usr/bin/python3
 
 **Ad-hoc commands** — One-off tasks executed directly from the CLI using `-m` (module) and `-a` (arguments) without a playbook. The `shell` module supports pipes and redirections; the `command` module is safer for simple commands.
 
-### Verification — Ansible version, SSH key permissions, and passwordless login
+### Ansible version, SSH key permissions, and passwordless login
 
 ![Ansible version output, SSH key file permissions showing 600/644, and successful passwordless SSH login to the managed node](Verify1.png)
 
