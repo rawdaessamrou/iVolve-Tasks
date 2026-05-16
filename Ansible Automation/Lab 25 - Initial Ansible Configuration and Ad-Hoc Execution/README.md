@@ -31,6 +31,6 @@ ansible_python_interpreter=/usr/bin/python3
 
 ![Ansible version output, SSH key file permissions showing 600/644, and successful passwordless SSH login to the managed node](Verify1.png)
 
-### Verification — Ansible ping success and ad-hoc disk space output
+### Ansible ping success and ad-hoc disk space output
 
 ![Ansible ping returning SUCCESS with pong, followed by df -h output listing all filesystems on the managed node](Verify2.png)
