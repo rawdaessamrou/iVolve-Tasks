@@ -1,4 +1,4 @@
-# Lab 26 — Automated Web Server Configuration Using Ansible Playbooks
+# Lab 26: Automated Web Server Configuration Using Ansible Playbooks
 
 ## Overview
 
