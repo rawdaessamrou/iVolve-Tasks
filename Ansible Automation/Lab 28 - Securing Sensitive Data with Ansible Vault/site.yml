@@ -1,0 +1,36 @@
+---
+- name: Secure DB setup with Ansible Vault
+  hosts: managed_node
+  become: true
+  vars_files:
+    - group_vars/all/vars.yml
+
+  tasks:
+    - name: Install MySQL server and Python MySQL client
+      apt:
+        name:
+          - mysql-server
+          - python3-pymysql
+        state: present
+        update_cache: true
+
+    - name: Ensure MySQL service is running and enabled
+      service:
+        name: mysql
+        state: started
+        enabled: true
+
+    - name: Create iVolve database
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: Create DB user with all privileges on iVolve DB
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_user_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "%"
+        state: present
+        login_unix_socket: /var/run/mysqld/mysqld.sock

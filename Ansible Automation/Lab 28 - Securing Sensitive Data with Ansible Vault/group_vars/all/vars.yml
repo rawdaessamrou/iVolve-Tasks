@@ -1,0 +1,3 @@
+db_name: "iVolve"
+db_user: "iVolve_user"
+db_user_password: "{{ vault_db_user_password }}"
